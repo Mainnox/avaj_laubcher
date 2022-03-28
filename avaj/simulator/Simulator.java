@@ -1,52 +1,80 @@
 package avaj.simulator;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
+import avaj.aircraft.AircraftFactory;
+import avaj.flyable.Flyable;
+import avaj.tower.WeatherTower;
+
 public class Simulator {
+    private static int numbersCycles;
+    private static StringBuilder printable = new StringBuilder();
 
-    private static int numbers_cycles;
-    private static String printable;
+    private static void setupAircraft(WeatherTower weatherTower) {
+        String[] listAircraft = printable.toString().split("\n");
 
-    private static void init_simulation(String path) {
-        try {
-            FileReader fr = new FileReader(path);
-            BufferedReader br = new BufferedReader(fr);
+        for (int i = 0; i < listAircraft.length; i++) {
+            String[] aircraft = listAircraft[i].split(" ");
+            Flyable fly = AircraftFactory.newAircraft(aircraft[0], aircraft[1], Integer.parseInt(aircraft[2]),
+            Integer.parseInt(aircraft[3]), Integer.parseInt(aircraft[4]));
+            fly.registerTower(weatherTower);
+        }
+    }
+
+    private static void runSimulation() {
+        WeatherTower weatherTower = new WeatherTower();
+        setupAircraft(weatherTower);
+        for (int i = 0; i < numbersCycles; i++) {
+            weatherTower.changeWeather();
+        }
+    }
+
+    private static boolean initSimulation(String path) {
+        try (BufferedReader br = new BufferedReader(new FileReader(path)))
+            {
             String line;
             boolean first = true;
+
             line = br.readLine();
             while (line != null) {
-                if (first == true) {
-                    numbers_cycles = Integer.parseInt(line);
-                    if (numbers_cycles < 0) {
+                if (first) {
+                    numbersCycles = Integer.parseInt(line);
+                    if (numbersCycles < 0) {
                         System.out.println("The first line of the scenario must be the number of time the simulation runs.");
-                        return ;
+                        return (false);
                     }
                     first = false;
                 }
                 else {
-                    System.out.println(line);
+                    ParsingException.testParsing(line);
+                    printable.append(line);
+                    printable.append('\n');
                 }
                 line = br.readLine();
             }
-            br.close();
         }
         catch (IOException e) {
             e.printStackTrace();
-            return ;
+            return (false);
         }
         catch (NumberFormatException e) {
             System.out.println("The first line of the scenario must be the number of time the simulation runs.");
-            return ;
+            return (false);
         }
+        catch (ParsingException e) {
+            System.out.println(e.getMessage());
+            return (false);
+        }
+        return (true);
     }
     public static void main(String[] args) {
         if (args.length != 1) {
             System.out.println("Avaj-launcher error.\nNeed a scenario to run a simulation.");
             return ;
         }
-        init_simulation(args[0]);
+        if (initSimulation(args[0]))
+            runSimulation();
     }
 }
