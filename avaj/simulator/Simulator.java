@@ -3,9 +3,11 @@ package avaj.simulator;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 
 import avaj.aircraft.AircraftFactory;
 import avaj.flyable.Flyable;
+import avaj.hashing.Hashing;
 import avaj.tower.WeatherTower;
 
 public class Simulator {
@@ -31,14 +33,15 @@ public class Simulator {
         }
     }
 
-    private static boolean initSimulation(String path) {
+    private static boolean initSimulation(String path, boolean md5) {
         try (BufferedReader br = new BufferedReader(new FileReader(path)))
             {
             String line;
             boolean first = true;
 
-            line = br.readLine();
-            while (line != null) {
+            while ((line = br.readLine()) != null) {
+                if (md5)
+                    line = Hashing.checkHash(line, first);
                 if (first) {
                     numbersCycles = Integer.parseInt(line);
                     if (numbersCycles < 0) {
@@ -49,10 +52,8 @@ public class Simulator {
                 }
                 else {
                     ParsingException.testParsing(line);
-                    printable.append(line);
-                    printable.append('\n');
+                    printable.append(line + "\n");
                 }
-                line = br.readLine();
             }
         }
         catch (IOException e) {
@@ -67,14 +68,26 @@ public class Simulator {
             System.out.println(e.getMessage());
             return (false);
         }
+        catch (NoSuchAlgorithmException e) {
+            System.out.println(e);
+            return (false);
+        }
         return (true);
     }
     public static void main(String[] args) {
         if (args.length != 1) {
-            System.out.println("Avaj-launcher error.\nNeed a scenario to run a simulation.");
-            return ;
+            if (args.length == 2 && args[0].equals("-md5")) {
+                if (!initSimulation(args[1], true))
+                    return;
+            }
+            else {
+                System.out.println("Avaj-launcher error.\nNeed a scenario to run a simulation.");
+                return ;
+            }
         }
-        if (initSimulation(args[0]))
-            runSimulation();
+        else
+            if (!initSimulation(args[0], false))
+                return ;
+        runSimulation();
     }
 }
